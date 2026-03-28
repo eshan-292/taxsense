@@ -301,16 +301,34 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
               </div>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={applyHRAEstimate}
-            className="text-xs font-medium text-accent-indigo hover:text-accent-purple transition-colors"
-          >
-            Apply estimated HRA exemption →
-          </button>
-          <p className="mt-1 text-[10px] text-muted/50">
-            Assumes rent = 60% of basic. Use HRA Calculator for exact value.
-          </p>
+          {input.hra === 0 ? (
+            <button
+              type="button"
+              onClick={applyHRAEstimate}
+              className="flex w-full items-center gap-2.5 rounded-lg border border-accent-indigo/20 bg-accent-indigo/5 px-3 py-2 text-left transition-colors hover:bg-accent-indigo/10"
+            >
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-indigo/15">
+                <svg className="h-3.5 w-3.5 text-accent-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-accent-indigo">
+                  Add HRA tax saving: ~₹{formatINR((() => {
+                    const b = Math.round(input.annualSalary * 0.4);
+                    const h = Math.round(b * (isMetro ? 0.5 : 0.4));
+                    const r = Math.round(b * 0.6);
+                    return Math.min(h, Math.max(0, r - Math.round(b * 0.1)), Math.round(b * (isMetro ? 0.5 : 0.4)));
+                  })())}
+                </p>
+                <p className="text-[10px] text-muted">Estimated from your salary · tap to auto-fill</p>
+              </div>
+            </button>
+          ) : (
+            <p className="text-[10px] text-muted/50">
+              HRA exemption applied: ₹{formatINR(input.hra)} · Use HRA Calculator for exact value
+            </p>
+          )}
         </div>
       )}
 
