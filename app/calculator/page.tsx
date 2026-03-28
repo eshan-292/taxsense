@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import TaxForm from "@/components/TaxForm";
 import RegimeComparison from "@/components/RegimeComparison";
 import {
@@ -12,46 +12,49 @@ import {
 } from "@/lib/tax-calculator";
 
 export default function CalculatorPage() {
+  const [lastInput, setLastInput] = useState<TaxInput | null>(null);
   const [results, setResults] = useState<{
     newRegime: TaxResult;
     oldRegime: TaxResult;
     recommendation: { regime: "new" | "old"; savings: number };
   } | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   const handleCalculate = (input: TaxInput) => {
     const newRegime = calculateNewRegimeTax(input);
     const oldRegime = calculateOldRegimeTax(input);
     const recommendation = getRecommendation(newRegime, oldRegime);
+    setLastInput(input);
     setResults({ newRegime, oldRegime, recommendation });
   };
 
   return (
     <div className="bg-gradient-mesh min-h-screen">
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
-        <div className="mb-8 text-center">
-          <h1 className="mb-2 text-3xl font-bold text-foreground sm:text-4xl">
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+        <div className="mb-6 text-center">
+          <h1 className="mb-1 text-2xl font-bold text-foreground sm:text-3xl">
             Income Tax Calculator
           </h1>
-          <p className="text-muted">
-            Compare Old vs New Tax Regime for FY 2025-26. Enter your details
-            below.
+          <p className="text-sm text-muted">
+            FY 2025-26 · Old vs New Regime
           </p>
         </div>
 
         {/* Form */}
-        <div className="mx-auto mb-10 max-w-2xl">
-          <div className="glass-card p-6 sm:p-8">
-            <TaxForm onCalculate={handleCalculate} />
-          </div>
+        <div className="glass-card mb-6 p-5 sm:p-7">
+          <TaxForm onCalculate={handleCalculate} />
         </div>
 
         {/* Results */}
-        {results && (
-          <RegimeComparison
-            newRegime={results.newRegime}
-            oldRegime={results.oldRegime}
-            recommendation={results.recommendation}
-          />
+        {results && lastInput && (
+          <div ref={resultsRef}>
+            <RegimeComparison
+              input={lastInput}
+              newRegime={results.newRegime}
+              oldRegime={results.oldRegime}
+              recommendation={results.recommendation}
+            />
+          </div>
         )}
       </div>
     </div>

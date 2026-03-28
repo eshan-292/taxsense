@@ -1,32 +1,10 @@
 import Link from "next/link";
 
+// Only the tools that matter for a salaried Indian
 const tools = [
   {
-    title: "Tax Calculator",
-    href: "/calculator",
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-      </svg>
-    ),
-    color: "text-accent-indigo",
-    bg: "bg-accent-indigo/10",
-    primary: true,
-  },
-  {
-    title: "Savings Planner",
-    href: "/planner",
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    color: "text-accent-amber",
-    bg: "bg-accent-amber/10",
-    primary: true,
-  },
-  {
     title: "HRA Calculator",
+    desc: "Section 10(13A) exemption",
     href: "/hra-calculator",
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -38,6 +16,7 @@ const tools = [
   },
   {
     title: "Capital Gains",
+    desc: "STCG & LTCG on stocks, MF",
     href: "/capital-gains",
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -48,51 +27,20 @@ const tools = [
     bg: "bg-accent-green/10",
   },
   {
-    title: "GST Calculator",
-    href: "/gst-calculator",
+    title: "Savings Planner",
+    desc: "Maximize 80C, 80D, NPS",
+    href: "/planner",
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
-    color: "text-violet-400",
-    bg: "bg-violet-500/10",
-  },
-  {
-    title: "Advance Tax",
-    href: "/advance-tax",
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    ),
-    color: "text-orange-400",
-    bg: "bg-orange-500/10",
-  },
-  {
-    title: "TDS Calculator",
-    href: "/tds-calculator",
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-      </svg>
-    ),
-    color: "text-rose-400",
-    bg: "bg-rose-500/10",
-  },
-  {
-    title: "Investments",
-    href: "/compare-investments",
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
-    color: "text-teal-400",
-    bg: "bg-teal-500/10",
+    color: "text-accent-amber",
+    bg: "bg-accent-amber/10",
   },
   {
     title: "Filing Guide",
+    desc: "Step-by-step ITR help",
     href: "/filing",
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -104,24 +52,42 @@ const tools = [
   },
 ];
 
+// Tax deadlines — show next 3 upcoming ones
+const TAX_DATES = [
+  { date: new Date("2026-03-31"), label: "FY ends", sublabel: "Last day for 80C investments", urgent: true },
+  { date: new Date("2026-06-15"), label: "Advance Tax Q1", sublabel: "FY 2026-27 first instalment" },
+  { date: new Date("2026-07-31"), label: "ITR Deadline", sublabel: "Filing FY 2025-26 returns" },
+  { date: new Date("2026-09-15"), label: "Advance Tax Q2", sublabel: "Second instalment due" },
+  { date: new Date("2026-12-15"), label: "Advance Tax Q3", sublabel: "Third instalment due" },
+  { date: new Date("2027-03-15"), label: "Advance Tax Q4", sublabel: "Final instalment due" },
+];
+
+function getDaysLeft(date: Date): number {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export default function Home() {
+  const upcoming = TAX_DATES.filter((d) => getDaysLeft(d.date) >= 0).slice(0, 2);
+
   return (
     <div className="bg-gradient-mesh min-h-screen">
       {/* Hero */}
-      <section className="mx-auto max-w-lg px-4 pb-10 pt-14 text-center sm:pt-20">
+      <section className="mx-auto max-w-lg px-4 pb-8 pt-12 text-center sm:pt-16">
         <div className="mb-3 inline-block rounded-full border border-accent-indigo/20 bg-accent-indigo/10 px-3 py-1 text-xs font-medium text-accent-indigo">
           FY 2025-26 · Free · No sign-up
         </div>
-        <h1 className="mb-4 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">
+        <h1 className="mb-3 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">
           Know your tax.{" "}
           <span className="gradient-text">Save more.</span>
         </h1>
         <p className="mb-6 text-sm text-muted">
-          Indian tax toolkit — income tax, HRA, capital gains, GST & more. All calculations stay on your device.
+          Indian tax toolkit — all calculations stay on your device.
         </p>
         <Link
           href="/calculator"
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:opacity-90"
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:opacity-90 active:scale-95"
         >
           Calculate my tax
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -130,21 +96,57 @@ export default function Home() {
         </Link>
       </section>
 
-      {/* Tools grid */}
+      {/* Tax calendar strip */}
+      {upcoming.length > 0 && (
+        <section className="mx-auto max-w-lg px-4 pb-6">
+          <div className="space-y-2">
+            {upcoming.map((item) => {
+              const days = getDaysLeft(item.date);
+              const isUrgent = days <= 7 || item.urgent;
+              return (
+                <div
+                  key={item.label}
+                  className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
+                    isUrgent
+                      ? "border-accent-red/20 bg-accent-red/5"
+                      : "border-card-border bg-card/40"
+                  }`}
+                >
+                  <div className={`text-center min-w-[40px] ${isUrgent ? "text-accent-red" : "text-accent-amber"}`}>
+                    <div className="text-xl font-bold leading-none">{days}</div>
+                    <div className="text-[9px] font-medium uppercase tracking-wider opacity-70">days</div>
+                  </div>
+                  <div className="w-px self-stretch bg-card-border" />
+                  <div>
+                    <p className={`text-sm font-semibold ${isUrgent ? "text-accent-red" : "text-foreground"}`}>
+                      {item.label}
+                    </p>
+                    <p className="text-xs text-muted">{item.sublabel}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Other tools */}
       <section className="mx-auto max-w-lg px-4 pb-16">
-        <div className="grid grid-cols-3 gap-3">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted/50">More tools</p>
+        <div className="grid grid-cols-2 gap-3">
           {tools.map((tool) => (
             <Link
               key={tool.href}
               href={tool.href}
-              className="group flex flex-col items-center gap-2 rounded-2xl border border-card-border bg-card/60 p-4 text-center transition-all hover:border-accent-indigo/20 hover:bg-card active:scale-95"
+              className="group flex items-center gap-3 rounded-2xl border border-card-border bg-card/60 p-4 transition-all hover:border-accent-indigo/20 hover:bg-card active:scale-95"
             >
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tool.bg} ${tool.color} transition-transform group-hover:scale-110`}>
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tool.bg} ${tool.color}`}>
                 {tool.icon}
               </div>
-              <span className="text-xs font-medium leading-tight text-foreground">
-                {tool.title}
-              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground leading-tight">{tool.title}</p>
+                <p className="text-xs text-muted leading-tight mt-0.5">{tool.desc}</p>
+              </div>
             </Link>
           ))}
         </div>
