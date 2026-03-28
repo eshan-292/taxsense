@@ -146,9 +146,11 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
 
     const saved = loadFromStorage();
     const merged = plannerOverride ? { ...saved, ...plannerOverride } : saved;
-    setInput(merged);
+    // Only restore salary — deductions start at 0 so user adds them intentionally
+    const salaryOnly = { ...defaultInput, annualSalary: merged.annualSalary };
+    setInput(salaryOnly);
     setHydrated(true);
-    if (merged.annualSalary > 0) onCalculate(merged);
+    if (salaryOnly.annualSalary > 0) onCalculate(salaryOnly);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -337,7 +339,7 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
                   <span className="shrink-0 text-[10px] text-accent-green">-₹{formatINR(calcSaving(input[d.key] as number))}</span>
                 </div>
               ))}
-              <p className="text-[10px] text-muted/50">Values are estimates. Edit for exact amounts from your payslip.</p>
+              <p className="text-[10px] text-muted/50">Values are estimates based on your salary. Edit for exact amounts.</p>
             </div>
           )}
         </div>
