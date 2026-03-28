@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { TaxResult } from "@/lib/tax-calculator";
 import { formatRupee } from "@/lib/utils";
 
@@ -133,9 +134,29 @@ export default function RegimeComparison({
   oldRegime,
   recommendation,
 }: RegimeComparisonProps) {
+  const [copied, setCopied] = useState(false);
   const maxTax = Math.max(newRegime.totalTax, oldRegime.totalTax, 1);
   const newBarHeight = (newRegime.totalTax / maxTax) * 100;
   const oldBarHeight = (oldRegime.totalTax / maxTax) * 100;
+
+  const handleShare = () => {
+    const better = recommendation.regime === "new" ? "New" : "Old";
+    const text = `My FY 2025-26 Tax Summary (via TaxSense)
+---
+Income: ${formatRupee(newRegime.grossIncome)}
+✅ ${better} Regime recommended — saves ${formatRupee(recommendation.savings)}
+
+New Regime: ${formatRupee(newRegime.totalTax)} tax | ${newRegime.effectiveRate.toFixed(1)}% effective rate
+Old Regime: ${formatRupee(oldRegime.totalTax)} tax | ${oldRegime.effectiveRate.toFixed(1)}% effective rate
+
+Monthly take-home (${better}): ${formatRupee(recommendation.regime === "new" ? newRegime.monthlyTakeHome : oldRegime.monthlyTakeHome)}
+
+Calculate yours free at taxsense-self.vercel.app`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -156,7 +177,7 @@ export default function RegimeComparison({
             />
           </svg>
         </div>
-        <div>
+        <div className="flex-1">
           <p className="text-lg font-semibold text-foreground">
             {recommendation.regime === "new" ? "New" : "Old"} Tax Regime saves
             you more
@@ -170,6 +191,26 @@ export default function RegimeComparison({
             {recommendation.regime === "new" ? "old" : "new"} regime
           </p>
         </div>
+        <button
+          onClick={handleShare}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-card-border bg-background/40 px-3 py-2 text-xs font-medium text-muted transition-colors hover:border-accent-indigo/30 hover:text-foreground"
+        >
+          {copied ? (
+            <>
+              <svg className="h-3.5 w-3.5 text-accent-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Copied!
+            </>
+          ) : (
+            <>
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Share
+            </>
+          )}
+        </button>
       </div>
 
       {/* Visual comparison bar chart */}

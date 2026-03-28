@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { TaxInput } from "@/lib/tax-calculator";
 import { formatINR } from "@/lib/utils";
 
@@ -13,7 +13,10 @@ interface FieldConfig {
   label: string;
   hint?: string;
   oldOnly?: boolean;
+  max?: number;
 }
+
+const STORAGE_KEY = "taxsense_calculator_input";
 
 const salaryField: FieldConfig = {
   key: "annualSalary",
@@ -30,7 +33,7 @@ const incomeSourceFields: FieldConfig[] = [
   {
     key: "incomeCapitalGains",
     label: "Capital Gains (already taxed)",
-    hint: "Net capital gains from stocks, MF, property etc. (for total income calculation)",
+    hint: "Net capital gains from stocks, MF, property etc.",
   },
   {
     key: "incomeOtherSources",
@@ -43,43 +46,49 @@ const deductionFields: FieldConfig[] = [
   {
     key: "hra",
     label: "HRA Exemption",
-    hint: "House Rent Allowance exemption amount (use HRA Calculator)",
+    hint: "House Rent Allowance exemption (use HRA Calculator)",
     oldOnly: true,
+    max: 600000,
   },
   {
     key: "section80C",
     label: "Section 80C Investments",
-    hint: "EPF + PPF + ELSS + LIC + tuition fees (max 1.5L)",
+    hint: "EPF + PPF + ELSS + LIC + tuition fees (max ₹1.5L)",
     oldOnly: true,
+    max: 150000,
   },
   {
     key: "section80D_self",
     label: "Health Insurance (Self/Family)",
-    hint: "Section 80D - self & family premium (max 25K)",
+    hint: "Section 80D — self & family premium (max ₹25K)",
     oldOnly: true,
+    max: 25000,
   },
   {
     key: "section80D_parents",
     label: "Health Insurance (Parents)",
-    hint: "Section 80D - parents premium (max 25K/50K)",
+    hint: "Section 80D — parents premium (max ₹25K/50K)",
     oldOnly: true,
+    max: 50000,
   },
   {
     key: "homeLoanInterest",
     label: "Home Loan Interest",
-    hint: "Section 24(b) - interest on housing loan (max 2L)",
+    hint: "Section 24(b) — interest on housing loan (max ₹2L)",
     oldOnly: true,
+    max: 200000,
   },
   {
     key: "nps80CCD1B",
     label: "NPS Contribution",
-    hint: "Section 80CCD(1B) - additional NPS (max 50K)",
+    hint: "Section 80CCD(1B) — additional NPS (max ₹50K)",
     oldOnly: true,
+    max: 50000,
   },
   {
     key: "section80E",
     label: "Education Loan Interest",
-    hint: "Section 80E - no upper limit, for 8 years",
+    hint: "Section 80E — no upper limit, for 8 years",
     oldOnly: true,
   },
   {
@@ -91,7 +100,7 @@ const deductionFields: FieldConfig[] = [
   {
     key: "otherDeductions",
     label: "Other Deductions",
-    hint: "Any other deductions under old regime (80TTA, 80GG, etc.)",
+    hint: "80TTA, 80GG, etc.",
     oldOnly: true,
   },
 ];
@@ -112,28 +121,83 @@ const defaultInput: TaxInput = {
   otherDeductions: 0,
 };
 
+const SALARY_PRESETS = [500000, 750000, 1000000, 1500000, 2000000, 2500000];
+const SLIDER_MIN = 300000;
+const SLIDER_MAX = 5000000;
+const SLIDER_STEP = 25000;
+
+function loadFromStorage(): TaxInput {
+  if (typeof window === "undefined") return defaultInput;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultInput;
+    const parsed = JSON.parse(raw);
+    // Merge with defaultInput to handle new fields
+    return { ...defaultInput, ...parsed };
+  } catch {
+    return defaultInput;
+  }
+}
+
 export default function TaxForm({ onCalculate }: TaxFormProps) {
   const [input, setInput] = useState<TaxInput>(defaultInput);
   const [showIncomeSources, setShowIncomeSources] = useState(false);
   const [showDeductions, setShowDeductions] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleChange = useCallback(
-    (key: keyof TaxInput, value: string) => {
-      // Handle negative numbers for house property
-      const isNegative = value.startsWith("-");
-      const numericValue = parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
-      setInput((prev) => ({
-        ...prev,
-        [key]: isNegative ? -numericValue : numericValue,
-      }));
-    },
-    []
-  );
+  // Hydrate from localStorage after mount
+  useEffect(() => {
+    const saved = loadFromStorage();
+    setInput(saved);
+    setHydrated(true);
+    if (saved.annualSalary > 0) {
+      // Trigger initial calculation with saved data
+      onCalculate(saved);
+      if (
+        saved.hra > 0 ||
+        saved.section80C > 0 ||
+        saved.section80D_self > 0 ||
+        saved.section80D_parents > 0 ||
+        saved.homeLoanInterest > 0 ||
+        saved.nps80CCD1B > 0 ||
+        saved.section80E > 0 ||
+        saved.section80G > 0 ||
+        saved.otherDeductions > 0
+      ) {
+        setShowDeductions(true);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onCalculate(input);
-  };
+  // Auto-calculate on input change (debounced 400ms) + save to localStorage
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(input));
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (input.annualSalary > 0) {
+        onCalculate(input);
+      }
+    }, 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [input, hydrated, onCalculate]);
+
+  const handleChange = useCallback((key: keyof TaxInput, value: string) => {
+    const isNegative = value.startsWith("-");
+    const numericValue = parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
+    setInput((prev) => ({
+      ...prev,
+      [key]: isNegative ? -numericValue : numericValue,
+    }));
+  }, []);
+
+  const handleSliderChange = useCallback((value: number) => {
+    setInput((prev) => ({ ...prev, annualSalary: value }));
+  }, []);
 
   const handleQuickFill = (salary: number) => {
     const quickInput: TaxInput = {
@@ -153,8 +217,17 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
     };
     setInput(quickInput);
     setShowDeductions(true);
-    onCalculate(quickInput);
   };
+
+  const handleReset = () => {
+    setInput(defaultInput);
+    setShowDeductions(false);
+    setShowIncomeSources(false);
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  const sliderPercent =
+    ((input.annualSalary - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)) * 100;
 
   const renderField = (field: FieldConfig) => (
     <div key={field.key}>
@@ -166,7 +239,7 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
       </label>
       <div className="relative">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">
-          &#x20B9;
+          ₹
         </span>
         <input
           type="text"
@@ -175,7 +248,7 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
             input[field.key] === 0
               ? ""
               : (input[field.key] < 0 ? "-" : "") +
-                formatINR(Math.abs(input[field.key]))
+                formatINR(Math.abs(input[field.key] as number))
           }
           onChange={(e) => handleChange(field.key, e.target.value)}
           placeholder="0"
@@ -189,17 +262,23 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Quick fill buttons */}
+    <div className="space-y-6">
+      {/* Quick fill */}
       <div>
-        <p className="mb-2 text-sm text-muted">Quick fill salary:</p>
+        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted/60">
+          Quick fill
+        </p>
         <div className="flex flex-wrap gap-2">
-          {[500000, 750000, 1000000, 1500000, 2000000, 2500000].map((s) => (
+          {SALARY_PRESETS.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => handleQuickFill(s)}
-              className="rounded-lg border border-card-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-accent-indigo/50 hover:bg-accent-indigo/10"
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                input.annualSalary === s
+                  ? "border-accent-indigo/50 bg-accent-indigo/15 text-accent-indigo"
+                  : "border-card-border bg-card text-foreground hover:border-accent-indigo/40 hover:bg-accent-indigo/10"
+              }`}
             >
               {formatINR(s)}
             </button>
@@ -207,14 +286,25 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
         </div>
       </div>
 
-      {/* Salary field - always visible */}
+      {/* Salary — text input + slider */}
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-foreground">
-          {salaryField.label}
-        </label>
-        <div className="relative">
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-sm font-medium text-foreground">
+            Annual Salary (CTC)
+          </label>
+          {input.annualSalary > 0 && (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="text-xs text-muted/60 hover:text-muted transition-colors"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+        <div className="relative mb-3">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">
-            &#x20B9;
+            ₹
           </span>
           <input
             type="text"
@@ -225,7 +315,54 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
             className="w-full rounded-xl border border-card-border bg-card py-3 pl-8 pr-4 text-lg font-medium text-foreground placeholder:text-muted/50 focus:border-accent-indigo/50 focus:outline-none focus:ring-1 focus:ring-accent-indigo/30"
           />
         </div>
-        <p className="mt-1 text-xs text-muted">{salaryField.hint}</p>
+        {/* Salary slider */}
+        <div className="relative px-1">
+          <style>{`
+            .salary-slider {
+              -webkit-appearance: none;
+              appearance: none;
+              height: 4px;
+              border-radius: 2px;
+              outline: none;
+              cursor: pointer;
+              background: linear-gradient(to right, #6366f1 ${sliderPercent}%, rgba(255,255,255,0.1) ${sliderPercent}%);
+            }
+            .salary-slider::-webkit-slider-thumb {
+              -webkit-appearance: none;
+              appearance: none;
+              width: 20px;
+              height: 20px;
+              border-radius: 50%;
+              background: #6366f1;
+              cursor: pointer;
+              border: 2px solid rgba(99,102,241,0.4);
+              box-shadow: 0 0 8px rgba(99,102,241,0.4);
+            }
+            .salary-slider::-moz-range-thumb {
+              width: 20px;
+              height: 20px;
+              border-radius: 50%;
+              background: #6366f1;
+              cursor: pointer;
+              border: 2px solid rgba(99,102,241,0.4);
+              box-shadow: 0 0 8px rgba(99,102,241,0.4);
+            }
+          `}</style>
+          <input
+            type="range"
+            min={SLIDER_MIN}
+            max={SLIDER_MAX}
+            step={SLIDER_STEP}
+            value={Math.min(Math.max(input.annualSalary || SLIDER_MIN, SLIDER_MIN), SLIDER_MAX)}
+            onChange={(e) => handleSliderChange(Number(e.target.value))}
+            className="salary-slider w-full"
+          />
+          <div className="mt-1 flex justify-between text-xs text-muted/50">
+            <span>₹3L</span>
+            <span>₹50L</span>
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-muted">{salaryField.hint}</p>
       </div>
 
       {/* Toggle other income sources */}
@@ -240,21 +377,16 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
           viewBox="0 0 24 24"
           stroke="currentColor"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
-        {showIncomeSources ? "Hide" : "Add"} other income sources (house property, capital gains, etc.)
+        {showIncomeSources ? "Hide" : "Add"} other income (house property, capital gains…)
       </button>
 
       {showIncomeSources && (
         <div className="grid gap-4 sm:grid-cols-2 rounded-xl border border-card-border bg-background/30 p-4">
           <div className="sm:col-span-2">
             <p className="text-xs text-muted mb-3">
-              Add income from sources other than salary. For house property, enter negative value if you have a loss.
+              Add income from sources other than salary. Use negative value for house property loss.
             </p>
           </div>
           {incomeSourceFields.map(renderField)}
@@ -273,30 +405,21 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
           viewBox="0 0 24 24"
           stroke="currentColor"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
-        {showDeductions ? "Hide" : "Add"} deductions (for Old Regime comparison)
+        {showDeductions ? "Hide" : "Add"} deductions (80C, 80D, HRA…) for Old Regime
       </button>
 
-      {/* Deduction fields */}
       {showDeductions && (
         <div className="grid gap-4 sm:grid-cols-2">
           {deductionFields.map(renderField)}
         </div>
       )}
 
-      {/* Submit */}
-      <button
-        type="submit"
-        className="w-full rounded-xl bg-gradient-to-r from-accent-indigo to-accent-purple py-3.5 text-base font-semibold text-white shadow-lg transition-all hover:opacity-90 hover:shadow-xl active:scale-[0.99]"
-      >
-        Calculate Tax
-      </button>
-    </form>
+      {/* Auto-calc notice */}
+      <p className="text-center text-xs text-muted/50">
+        Results update automatically as you type
+      </p>
+    </div>
   );
 }
