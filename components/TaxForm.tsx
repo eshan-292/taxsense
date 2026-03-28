@@ -146,11 +146,9 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
 
     const saved = loadFromStorage();
     const merged = plannerOverride ? { ...saved, ...plannerOverride } : saved;
-    // Only restore salary — deductions start at 0 so user adds them intentionally
-    const salaryOnly = { ...defaultInput, annualSalary: merged.annualSalary };
-    setInput(salaryOnly);
+    setInput(merged);
     setHydrated(true);
-    if (salaryOnly.annualSalary > 0) onCalculate(salaryOnly);
+    if (merged.annualSalary > 0) onCalculate(merged);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
