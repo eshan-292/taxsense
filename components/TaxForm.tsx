@@ -301,6 +301,9 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
               </div>
             ))}
           </div>
+          <p className="mb-2 text-[10px] text-accent-amber/70">
+            This is an estimate (Basic = 40% CTC). Check your payslip for actual values and fill in deductions below for exact old regime tax.
+          </p>
           {input.hra === 0 ? (
             <button
               type="button"
