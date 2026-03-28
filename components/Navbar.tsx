@@ -6,6 +6,10 @@ import { useState } from "react";
 
 const toolLinks = [
   { href: "/calculator", label: "Tax Calculator" },
+  { href: "/salary-optimizer", label: "Salary Optimizer", badge: true },
+  { href: "/life-events", label: "Life Events", badge: true },
+  { href: "/freelance", label: "Freelance Tax (44ADA)", badge: true },
+  { href: "/form16", label: "Form 16 Parser", badge: true },
   { href: "/hra-calculator", label: "HRA Calculator" },
   { href: "/capital-gains", label: "Capital Gains" },
   { href: "/gst-calculator", label: "GST Calculator" },
@@ -79,18 +83,21 @@ export default function Navbar() {
             </button>
 
             {showTools && (
-              <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-card-border bg-card/95 backdrop-blur-xl p-2 shadow-xl">
+              <div className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-card-border bg-card/95 backdrop-blur-xl p-2 shadow-xl">
                 {toolLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                    className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
                       isActive(link.href)
                         ? "bg-accent-indigo/15 text-accent-indigo"
                         : "text-muted hover:bg-background/50 hover:text-foreground"
                     }`}
                   >
                     {link.label}
+                    {"badge" in link && link.badge && (
+                      <span className="rounded-full bg-accent-indigo/15 px-1.5 py-px text-[9px] font-semibold text-accent-indigo">NEW</span>
+                    )}
                   </Link>
                 ))}
               </div>
@@ -140,13 +147,16 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className={`block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive(link.href)
                     ? "bg-accent-indigo/15 text-accent-indigo"
                     : "text-muted hover:text-foreground"
                 }`}
               >
                 {link.label}
+                {"badge" in link && link.badge && (
+                  <span className="rounded-full bg-accent-indigo/15 px-1.5 py-px text-[9px] font-semibold text-accent-indigo">NEW</span>
+                )}
               </Link>
             ))}
           </div>
