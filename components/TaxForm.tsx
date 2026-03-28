@@ -129,22 +129,17 @@ function loadFromPlanner(): Partial<TaxInput> | null {
 export default function TaxForm({ onCalculate }: TaxFormProps) {
   const [input, setInput] = useState<TaxInput>(defaultInput);
   const [showIncomeSources, setShowIncomeSources] = useState(false);
-  const [showDeductions, setShowDeductions] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [isMetro, setIsMetro] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Priority: URL params > Planner handoff > localStorage
     const urlInput = loadFromURLParams();
     const plannerOverride = loadFromPlanner();
 
     if (urlInput) {
       setInput(urlInput);
       setHydrated(true);
-      if (urlInput.section80C > 0 || urlInput.hra > 0 || urlInput.nps80CCD1B > 0) {
-        setShowDeductions(true);
-      }
       onCalculate(urlInput);
       return;
     }
@@ -153,18 +148,10 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
     const merged = plannerOverride ? { ...saved, ...plannerOverride } : saved;
     setInput(merged);
     setHydrated(true);
-
-    if (merged.annualSalary > 0) {
-      onCalculate(merged);
-      if (merged.hra > 0 || merged.section80C > 0 || merged.section80D_self > 0 ||
-          merged.nps80CCD1B > 0 || merged.homeLoanInterest > 0) {
-        setShowDeductions(true);
-      }
-    }
+    if (merged.annualSalary > 0) onCalculate(merged);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-calculate + save to localStorage
   useEffect(() => {
     if (!hydrated) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(input));
@@ -185,43 +172,39 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
     setInput((prev) => ({ ...prev, annualSalary: value }));
   }, []);
 
-  const handleQuickFill = (salary: number) => {
-    const quickInput: TaxInput = {
-      annualSalary: salary, incomeHouseProperty: 0, incomeCapitalGains: 0, incomeOtherSources: 0,
-      hra: Math.round(salary * 0.15), section80C: 150000, section80D_self: 25000,
-      section80D_parents: 0, homeLoanInterest: 0, nps80CCD1B: 50000,
-      section80E: 0, section80G: 0, otherDeductions: 0,
-    };
-    setInput(quickInput);
-    setShowDeductions(true);
-  };
-
   const handleReset = () => {
     setInput(defaultInput);
-    setShowDeductions(false);
     setShowIncomeSources(false);
+    setShowMore(false);
     localStorage.removeItem(STORAGE_KEY);
-    // Clear URL params
     window.history.replaceState({}, "", window.location.pathname);
   };
 
-  const applyHRAEstimate = () => {
-    const basic = Math.round(input.annualSalary * 0.4);
-    const hraReceived = Math.round(basic * (isMetro ? 0.5 : 0.4));
-    // Assume rent = 60% of basic (reasonable for metro). Exemption = min(hraReceived, rent-10%basic, 50%/40%basic)
-    const assumedRent = Math.round(basic * 0.6);
-    const rule1 = hraReceived;
-    const rule2 = Math.max(0, assumedRent - Math.round(basic * 0.1));
-    const rule3 = Math.round(basic * (isMetro ? 0.5 : 0.4));
-    const exemption = Math.min(rule1, rule2, rule3);
-    setInput((prev) => ({ ...prev, hra: exemption }));
-    setShowDeductions(true);
+  const toggleDeduction = (key: keyof TaxInput, estimate: number) => {
+    setInput((prev) => ({
+      ...prev,
+      [key]: (prev[key] as number) > 0 ? 0 : estimate,
+    }));
   };
 
   const sliderPct = ((input.annualSalary - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)) * 100;
-  const basic = Math.round(input.annualSalary * 0.4);
-  const hraReceived = Math.round(basic * (isMetro ? 0.5 : 0.4));
-  const special = Math.max(0, input.annualSalary - basic - hraReceived);
+  const marginalRate = getMarginalRate(input.annualSalary);
+  const calcSaving = (amount: number) => Math.round(amount * marginalRate * 1.04);
+
+  // HRA estimate
+  const hraEstimate = (() => {
+    const b = Math.round(input.annualSalary * 0.4);
+    const h = Math.round(b * 0.5);
+    const r = Math.round(b * 0.6);
+    return Math.min(h, Math.max(0, r - Math.round(b * 0.1)), h);
+  })();
+
+  const allDeductions = [
+    { key: "hra" as keyof TaxInput, label: "HRA", estimate: hraEstimate },
+    ...DEDUCTION_SUGGESTIONS.map(d => ({ key: d.key, label: d.label, estimate: d.estimate })),
+  ];
+
+  const totalSaving = allDeductions.reduce((sum, d) => sum + calcSaving(input[d.key] as number), 0);
 
   const renderField = (field: FieldConfig) => (
     <div key={field.key}>
@@ -245,24 +228,7 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Quick fill */}
-      <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted/60">Quick fill</p>
-        <div className="flex flex-wrap gap-2">
-          {SALARY_PRESETS.map((s) => (
-            <button key={s} type="button" onClick={() => handleQuickFill(s)}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                input.annualSalary === s
-                  ? "border-accent-indigo/50 bg-accent-indigo/15 text-accent-indigo"
-                  : "border-card-border bg-card text-foreground hover:border-accent-indigo/40 hover:bg-accent-indigo/10"
-              }`}>
-              {formatINR(s)}
-            </button>
-          ))}
-        </div>
-      </div>
-
+    <div className="space-y-5">
       {/* Salary field + slider */}
       <div>
         <div className="mb-1.5 flex items-center justify-between">
@@ -301,247 +267,115 @@ export default function TaxForm({ onCalculate }: TaxFormProps) {
             <span>₹3L</span><span>₹50L</span>
           </div>
         </div>
+        {/* Quick fill */}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {SALARY_PRESETS.map((s) => (
+            <button key={s} type="button"
+              onClick={() => setInput(prev => ({ ...prev, annualSalary: s }))}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                input.annualSalary === s
+                  ? "border-accent-indigo/50 bg-accent-indigo/15 text-accent-indigo"
+                  : "border-card-border text-muted hover:text-foreground"
+              }`}>
+              ₹{formatINR(s)}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Salary structure estimator */}
+      {/* Deduction pills - Old Regime */}
       {input.annualSalary >= 300000 && (
-        <div className="rounded-xl border border-card-border bg-background/40 p-3">
+        <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium text-muted">Estimated salary structure</p>
-            <button
-              type="button"
-              onClick={() => setIsMetro(!isMetro)}
-              className="flex items-center gap-1 rounded-lg border border-card-border bg-card px-2 py-1 text-xs text-muted transition-colors hover:text-foreground"
-            >
-              <span>{isMetro ? "Metro" : "Non-metro"}</span>
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-            </button>
+            <p className="text-xs font-medium text-muted">Add deductions <span className="text-muted/50">(Old Regime)</span></p>
+            {totalSaving > 0 && (
+              <span className="text-[10px] font-semibold text-accent-green">
+                Saves ₹{formatINR(totalSaving)}/yr
+              </span>
+            )}
           </div>
-          <div className="mb-2.5 grid grid-cols-3 gap-2 text-center">
-            {[
-              { label: "Basic", value: basic },
-              { label: "HRA", value: hraReceived },
-              { label: "Special", value: special },
-            ].map((item) => (
-              <div key={item.label} className="rounded-lg bg-card px-2 py-1.5">
-                <p className="text-[10px] text-muted">{item.label}</p>
-                <p className="text-xs font-semibold text-foreground">₹{formatINR(item.value)}</p>
-              </div>
-            ))}
+          <div className="flex flex-wrap gap-1.5">
+            {allDeductions.map((d) => {
+              const current = input[d.key] as number;
+              const isActive = current > 0;
+              const saving = calcSaving(d.estimate);
+              return (
+                <button
+                  key={d.key}
+                  type="button"
+                  onClick={() => toggleDeduction(d.key, d.estimate)}
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all active:scale-95 ${
+                    isActive
+                      ? "border-accent-green/40 bg-accent-green/10 text-accent-green"
+                      : "border-card-border text-muted hover:border-accent-indigo/30 hover:text-foreground"
+                  }`}
+                >
+                  {isActive ? "✓ " : "+ "}{d.label}
+                  {!isActive && saving > 0 && (
+                    <span className="ml-1 text-accent-green/70">₹{formatINR(saving)}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-          <p className="mb-2 text-[10px] text-accent-amber/70">
-            This is an estimate (Basic = 40% CTC). Check your payslip for actual values and fill in deductions below for exact old regime tax.
-          </p>
-          {input.hra === 0 ? (
-            <button
-              type="button"
-              onClick={applyHRAEstimate}
-              className="flex w-full items-center gap-2.5 rounded-lg border border-accent-indigo/20 bg-accent-indigo/5 px-3 py-2 text-left transition-colors hover:bg-accent-indigo/10"
-            >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-indigo/15">
-                <svg className="h-3.5 w-3.5 text-accent-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-accent-indigo">
-                  Add HRA tax saving: ~₹{formatINR((() => {
-                    const b = Math.round(input.annualSalary * 0.4);
-                    const h = Math.round(b * (isMetro ? 0.5 : 0.4));
-                    const r = Math.round(b * 0.6);
-                    return Math.min(h, Math.max(0, r - Math.round(b * 0.1)), Math.round(b * (isMetro ? 0.5 : 0.4)));
-                  })())}
-                </p>
-                <p className="text-[10px] text-muted">Estimated from your salary · tap to auto-fill</p>
-              </div>
-            </button>
-          ) : (
-            <p className="text-[10px] text-muted/50">
-              HRA exemption applied: ₹{formatINR(input.hra)} · Use HRA Calculator for exact value
-            </p>
+
+          {/* Editable values for active deductions */}
+          {allDeductions.some(d => (input[d.key] as number) > 0) && (
+            <div className="mt-3 space-y-2">
+              {allDeductions.filter(d => (input[d.key] as number) > 0).map((d) => (
+                <div key={d.key} className="flex items-center gap-2">
+                  <span className="w-16 shrink-0 text-xs text-muted truncate">{d.label}</span>
+                  <div className="relative flex-1">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">₹</span>
+                    <input
+                      type="text" inputMode="numeric"
+                      value={formatINR(input[d.key] as number)}
+                      onChange={(e) => handleChange(d.key, e.target.value)}
+                      className="w-full rounded-lg border border-card-border bg-card/50 py-1.5 pl-7 pr-2 text-sm text-foreground outline-none focus:border-accent-indigo/50"
+                    />
+                  </div>
+                  <span className="shrink-0 text-[10px] text-accent-green">-₹{formatINR(calcSaving(input[d.key] as number))}</span>
+                </div>
+              ))}
+              <p className="text-[10px] text-muted/50">Values are estimates. Edit for exact amounts from your payslip.</p>
+            </div>
           )}
         </div>
       )}
 
-      {/* Toggle other income */}
-      <button type="button" onClick={() => setShowIncomeSources(!showIncomeSources)}
-        className="flex items-center gap-2 text-sm font-medium text-accent-green transition-colors hover:text-accent-green/80">
-        <svg className={`h-4 w-4 transition-transform ${showIncomeSources ? "rotate-90" : ""}`}
-          fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-        {showIncomeSources ? "Hide" : "Add"} other income (house property, capital gains…)
-      </button>
+      {/* Other income + more deductions */}
+      <div className="flex flex-wrap gap-3 text-xs">
+        <button type="button" onClick={() => setShowIncomeSources(!showIncomeSources)}
+          className="flex items-center gap-1 text-muted/60 hover:text-muted transition-colors">
+          <svg className={`h-3 w-3 transition-transform ${showIncomeSources ? "rotate-90" : ""}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          Other income
+        </button>
+        <button type="button" onClick={() => setShowMore(!showMore)}
+          className="flex items-center gap-1 text-muted/60 hover:text-muted transition-colors">
+          <svg className={`h-3 w-3 transition-transform ${showMore ? "rotate-90" : ""}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          80E, 80G, other
+        </button>
+      </div>
 
       {showIncomeSources && (
-        <div className="grid gap-4 sm:grid-cols-2 rounded-xl border border-card-border bg-background/30 p-4">
-          <div className="sm:col-span-2">
-            <p className="text-xs text-muted mb-3">
-              Add income from sources other than salary. Use negative value for house property loss.
-            </p>
-          </div>
+        <div className="grid gap-3 sm:grid-cols-2">
           {incomeSourceFields.map(renderField)}
         </div>
       )}
 
-      {/* Smart deduction cards - Old Regime */}
-      {input.annualSalary >= 300000 && (() => {
-        const marginalRate = getMarginalRate(input.annualSalary);
-        const calcSaving = (amount: number) => Math.round(amount * marginalRate * 1.04);
-        const anyAdded = DEDUCTION_SUGGESTIONS.some(d => (input[d.key] as number) > 0);
+      {showMore && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {EXTRA_DEDUCTION_FIELDS.map(renderField)}
+        </div>
+      )}
 
-        return (
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted/60">Old regime deductions</p>
-              {anyAdded && (
-                <span className="rounded-full bg-accent-green/10 px-2 py-0.5 text-[10px] font-semibold text-accent-green">
-                  Saves ₹{formatINR(
-                    DEDUCTION_SUGGESTIONS.reduce((sum, d) => sum + calcSaving(input[d.key] as number), 0)
-                    + calcSaving(input.hra)
-                  )}/yr
-                </span>
-              )}
-            </div>
-            <p className="mb-3 text-xs text-muted">Tap to add standard estimates. Edit for your exact amounts.</p>
-
-            <div className="space-y-2">
-              {DEDUCTION_SUGGESTIONS.map((d) => {
-                const current = input[d.key] as number;
-                const isAdded = current > 0;
-                const saving = calcSaving(d.estimate);
-
-                if (!isAdded) {
-                  return (
-                    <button
-                      key={d.key}
-                      type="button"
-                      onClick={() => {
-                        setInput(prev => ({ ...prev, [d.key]: d.estimate }));
-                        setShowDeductions(true);
-                      }}
-                      className="flex w-full items-center gap-3 rounded-xl border border-card-border bg-card/40 px-3 py-2.5 text-left transition-all hover:border-accent-indigo/20 hover:bg-card/60 active:scale-[0.98]"
-                    >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-indigo/10">
-                        <svg className="h-3.5 w-3.5 text-accent-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="rounded bg-muted/10 px-1.5 py-px text-[9px] font-mono text-muted">{d.section}</span>
-                          <span className="text-sm font-medium text-foreground">{d.label}</span>
-                        </div>
-                        <p className="text-[11px] text-muted mt-0.5">{d.sub}</p>
-                      </div>
-                      {saving > 0 && (
-                        <div className="text-right shrink-0">
-                          <p className="text-xs font-semibold text-accent-green">+₹{formatINR(saving)}</p>
-                          <p className="text-[9px] text-muted">/yr saved</p>
-                        </div>
-                      )}
-                    </button>
-                  );
-                }
-
-                return (
-                  <div
-                    key={d.key}
-                    className="rounded-xl border border-accent-green/20 bg-accent-green/5 px-3 py-2.5"
-                  >
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <svg className="h-3.5 w-3.5 text-accent-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="rounded bg-muted/10 px-1.5 py-px text-[9px] font-mono text-muted">{d.section}</span>
-                        <span className="text-sm font-medium text-foreground">{d.label}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setInput(prev => ({ ...prev, [d.key]: 0 }))}
-                        className="text-muted/40 hover:text-muted transition-colors"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">₹</span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={formatINR(current)}
-                          onChange={(e) => handleChange(d.key, e.target.value)}
-                          className="w-full rounded-lg border border-card-border bg-background/50 py-1.5 pl-7 pr-3 text-sm text-foreground outline-none focus:border-accent-indigo/50"
-                        />
-                      </div>
-                      <span className="shrink-0 text-xs font-semibold text-accent-green">
-                        saves ₹{formatINR(calcSaving(current))}/yr
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* HRA inline edit if already added via estimator */}
-            {input.hra > 0 && (
-              <div className="mt-2 rounded-xl border border-accent-green/20 bg-accent-green/5 px-3 py-2.5">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <svg className="h-3.5 w-3.5 text-accent-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span className="rounded bg-muted/10 px-1.5 py-px text-[9px] font-mono text-muted">10(13A)</span>
-                    <span className="text-sm font-medium text-foreground">HRA Exemption</span>
-                  </div>
-                  <button type="button" onClick={() => setInput(prev => ({ ...prev, hra: 0 }))}
-                    className="text-muted/40 hover:text-muted transition-colors">
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">₹</span>
-                    <input type="text" inputMode="numeric" value={formatINR(input.hra)}
-                      onChange={(e) => handleChange("hra", e.target.value)}
-                      className="w-full rounded-lg border border-card-border bg-background/50 py-1.5 pl-7 pr-3 text-sm text-foreground outline-none focus:border-accent-indigo/50" />
-                  </div>
-                  <span className="shrink-0 text-xs font-semibold text-accent-green">
-                    saves ₹{formatINR(calcSaving(input.hra))}/yr
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* More deductions toggle */}
-            <div className="mt-3">
-              <button type="button" onClick={() => setShowDeductions(!showDeductions)}
-                className="flex items-center gap-1.5 text-xs text-muted/60 hover:text-muted transition-colors">
-                <svg className={`h-3 w-3 transition-transform ${showDeductions ? "rotate-90" : ""}`}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-                {showDeductions ? "Hide" : "More"}: Education loan (80E), donations (80G), other
-              </button>
-              {showDeductions && (
-                <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  {EXTRA_DEDUCTION_FIELDS.map(renderField)}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      <p className="text-center text-xs text-muted/50">Results update automatically as you type</p>
+      <p className="text-center text-xs text-muted/50">Results update as you type</p>
     </div>
   );
 }

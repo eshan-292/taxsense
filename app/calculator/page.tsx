@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import TaxForm from "@/components/TaxForm";
 import RegimeComparison from "@/components/RegimeComparison";
 import {
@@ -14,27 +14,17 @@ import {
 export default function CalculatorPage() {
   const [lastInput, setLastInput] = useState<TaxInput | null>(null);
   const [results, setResults] = useState<{
+
     newRegime: TaxResult;
     oldRegime: TaxResult;
     recommendation: { regime: "new" | "old"; savings: number };
   } | null>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
-  const hasScrolled = useRef(false);
-
   const handleCalculate = (input: TaxInput) => {
     const newRegime = calculateNewRegimeTax(input);
     const oldRegime = calculateOldRegimeTax(input);
     const recommendation = getRecommendation(newRegime, oldRegime);
     setLastInput(input);
     setResults({ newRegime, oldRegime, recommendation });
-
-    // Scroll to results the first time they appear
-    if (!hasScrolled.current) {
-      hasScrolled.current = true;
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 150);
-    }
   };
 
   return (
@@ -52,7 +42,7 @@ export default function CalculatorPage() {
         </div>
 
         {results && lastInput && (
-          <div ref={resultsRef} className="scroll-mt-4">
+          <div className="scroll-mt-4">
             <RegimeComparison
               input={lastInput}
               newRegime={results.newRegime}
