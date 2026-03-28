@@ -18,12 +18,17 @@ import {
 
 export interface TaxInput {
   annualSalary: number;
+  incomeHouseProperty: number;
+  incomeCapitalGains: number;
+  incomeOtherSources: number;
   hra: number; // HRA exemption (only old regime)
   section80C: number; // EPF + PPF + ELSS + LIC + etc.
   section80D_self: number; // Health insurance for self/family
   section80D_parents: number; // Health insurance for parents
   homeLoanInterest: number; // Section 24(b)
   nps80CCD1B: number; // Additional NPS deduction
+  section80E: number; // Education loan interest
+  section80G: number; // Donations
   otherDeductions: number; // Any other deductions under old regime
 }
 
@@ -104,14 +109,20 @@ function calculateSurcharge(
     rate = NEW_REGIME_MAX_SURCHARGE_RATE;
   }
 
-  // Marginal relief: surcharge should not exceed the income over the threshold
-  // (simplified - full marginal relief calculation is more complex)
-
   return { surcharge: baseTax * rate, rate };
 }
 
+function getGrossIncome(input: TaxInput): number {
+  return (
+    input.annualSalary +
+    (input.incomeHouseProperty || 0) +
+    (input.incomeCapitalGains || 0) +
+    (input.incomeOtherSources || 0)
+  );
+}
+
 export function calculateNewRegimeTax(input: TaxInput): TaxResult {
-  const grossIncome = input.annualSalary;
+  const grossIncome = getGrossIncome(input);
   const standardDeduction = NEW_REGIME_STANDARD_DEDUCTION;
 
   // New regime: only standard deduction, no other deductions
@@ -157,7 +168,7 @@ export function calculateNewRegimeTax(input: TaxInput): TaxResult {
 }
 
 export function calculateOldRegimeTax(input: TaxInput): TaxResult {
-  const grossIncome = input.annualSalary;
+  const grossIncome = getGrossIncome(input);
   const standardDeduction = OLD_REGIME_STANDARD_DEDUCTION;
 
   // Old regime: all deductions apply
@@ -181,6 +192,8 @@ export function calculateOldRegimeTax(input: TaxInput): TaxResult {
     capped80D_parents +
     cappedHomeLoan +
     cappedNPS +
+    (input.section80E || 0) +
+    (input.section80G || 0) +
     input.otherDeductions;
 
   const taxableIncome = Math.max(0, grossIncome - totalDeductions);

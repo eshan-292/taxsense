@@ -9,8 +9,8 @@ export default function PlannerPage() {
             Tax Savings Planner
           </h1>
           <p className="text-muted">
-            Track your 80C, 80D, and NPS investments. Find how much more you can
-            save under the Old Tax Regime.
+            Track your 80C, 80D, NPS, 80E, 80G, and other investments. Find how
+            much more you can save under the Old Tax Regime.
           </p>
         </div>
 
