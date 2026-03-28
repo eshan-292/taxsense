@@ -485,6 +485,33 @@ export default function SavingsOptimizer() {
         ))}
       </div>
 
+      {/* Calculate my tax CTA */}
+      {totalDeductions > 0 && (() => {
+        const p = new URLSearchParams();
+        if (Math.min(total80C, SECTION_80C_LIMIT) > 0) p.set("c", String(Math.min(total80C, SECTION_80C_LIMIT)));
+        if (Math.min(total80D_self, SECTION_80D_SELF_LIMIT) > 0) p.set("ds", String(Math.min(total80D_self, SECTION_80D_SELF_LIMIT)));
+        if (Math.min(total80D_parents, SECTION_80D_PARENTS_LIMIT) > 0) p.set("dp", String(Math.min(total80D_parents, SECTION_80D_PARENTS_LIMIT)));
+        if (Math.min(totalNPS, NPS_80CCD_1B_LIMIT) > 0) p.set("nps", String(Math.min(totalNPS, NPS_80CCD_1B_LIMIT)));
+        if (Math.min(totalHomeLoan, HOME_LOAN_INTEREST_LIMIT) > 0) p.set("hl", String(Math.min(totalHomeLoan, HOME_LOAN_INTEREST_LIMIT)));
+        if (total80E > 0) p.set("e", String(total80E));
+        if (total80G_100 + total80G_50 > 0) p.set("g", String(total80G_100 + Math.round(total80G_50 * 0.5)));
+        const url = `/calculator?${p.toString()}`;
+        return (
+          <a
+            href={url}
+            className="glass-card flex items-center justify-between p-5 transition-all hover:border-accent-indigo/30 hover:glow-indigo"
+          >
+            <div>
+              <p className="font-semibold text-foreground">Calculate my tax with these deductions</p>
+              <p className="text-sm text-muted">Opens calculator with your {formatRupee(totalDeductions)} in deductions pre-filled</p>
+            </div>
+            <svg className="h-5 w-5 shrink-0 text-accent-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+        );
+      })()}
+
       {/* Suggestions */}
       {suggestions.length > 0 && (
         <div className="glass-card p-6">

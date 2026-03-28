@@ -141,8 +141,27 @@ export default function RegimeComparison({ input, newRegime, oldRegime, recommen
   const breakeven = computeBreakeven(newRegime, oldRegime);
   const currentDeductions = oldRegime.totalDeductions - 50000; // subtract std deduction
 
+  const buildShareURL = () => {
+    const p = new URLSearchParams();
+    if (input.annualSalary) p.set("s", String(input.annualSalary));
+    if (input.hra) p.set("hra", String(input.hra));
+    if (input.section80C) p.set("c", String(input.section80C));
+    if (input.section80D_self) p.set("ds", String(input.section80D_self));
+    if (input.section80D_parents) p.set("dp", String(input.section80D_parents));
+    if (input.homeLoanInterest) p.set("hl", String(input.homeLoanInterest));
+    if (input.nps80CCD1B) p.set("nps", String(input.nps80CCD1B));
+    if (input.section80E) p.set("e", String(input.section80E));
+    if (input.section80G) p.set("g", String(input.section80G));
+    if (input.otherDeductions) p.set("od", String(input.otherDeductions));
+    if (input.incomeHouseProperty) p.set("hp", String(input.incomeHouseProperty));
+    if (input.incomeCapitalGains) p.set("cg", String(input.incomeCapitalGains));
+    if (input.incomeOtherSources) p.set("os", String(input.incomeOtherSources));
+    return `${window.location.origin}/calculator?${p.toString()}`;
+  };
+
   const handleShare = () => {
     const better = recommendation.regime === "new" ? "New" : "Old";
+    const url = buildShareURL();
     const text = `My FY 2025-26 Tax Summary (via TaxSense)
 ---
 Income: ${formatRupee(newRegime.grossIncome)}
@@ -153,7 +172,7 @@ Old Regime: ${formatRupee(oldRegime.totalTax)} tax (${oldRegime.effectiveRate.to
 
 Monthly take-home: ${formatRupee(recommendation.regime === "new" ? newRegime.monthlyTakeHome : oldRegime.monthlyTakeHome)}
 
-taxsense-self.vercel.app`;
+See my calculation: ${url}`;
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

@@ -19,6 +19,7 @@ export default function CalculatorPage() {
     recommendation: { regime: "new" | "old"; savings: number };
   } | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const hasScrolled = useRef(false);
 
   const handleCalculate = (input: TaxInput) => {
     const newRegime = calculateNewRegimeTax(input);
@@ -26,6 +27,14 @@ export default function CalculatorPage() {
     const recommendation = getRecommendation(newRegime, oldRegime);
     setLastInput(input);
     setResults({ newRegime, oldRegime, recommendation });
+
+    // Scroll to results the first time they appear
+    if (!hasScrolled.current) {
+      hasScrolled.current = true;
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+    }
   };
 
   return (
@@ -35,19 +44,15 @@ export default function CalculatorPage() {
           <h1 className="mb-1 text-2xl font-bold text-foreground sm:text-3xl">
             Income Tax Calculator
           </h1>
-          <p className="text-sm text-muted">
-            FY 2025-26 · Old vs New Regime
-          </p>
+          <p className="text-sm text-muted">FY 2025-26 · Old vs New Regime</p>
         </div>
 
-        {/* Form */}
         <div className="glass-card mb-6 p-5 sm:p-7">
           <TaxForm onCalculate={handleCalculate} />
         </div>
 
-        {/* Results */}
         {results && lastInput && (
-          <div ref={resultsRef}>
+          <div ref={resultsRef} className="scroll-mt-4">
             <RegimeComparison
               input={lastInput}
               newRegime={results.newRegime}
